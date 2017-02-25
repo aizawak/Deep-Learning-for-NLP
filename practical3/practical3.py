@@ -140,7 +140,7 @@ for talk_idx in range(0, len(training_tokens_talks_ted)):
 labels = np.reshape(training_labels_talks_ted, (len(training_labels_talks_ted),num_outputs))
 
 max_epochs = 10
-epoch_iterations = len(sequences) / batch_size
+epoch_iterations = int(len(sequences) / batch_size)
 num_iterations = int(max_epochs * epoch_iterations)
 
 
@@ -169,10 +169,10 @@ with tf.Session() as sess:
         sequence_batch, labels_batch = iter_.__next__()
         if (i+1)%10==0:
             train_accuracy = accuracy.eval(session = sess, feed_dict={ x:sequence_batch, y: labels_batch})
-            print("step %d, training accuracy %g"%(i, train_accuracy))
+            print("step %d, training accuracy %g"%(i+1, train_accuracy))
         optimizer.run(session = sess, feed_dict={x: sequence_batch, y: labels_batch})
         if (i+1)%epoch_iterations==0:
-            save_path = saver.save(sess, "/tmp/model.ckpt")
+            save_path = saver.save(sess, "/tmp/model_%d.ckpt"%(i+1))
             print("Model saved in file: %s"%save_path)
 
 # create the sparse matrix first then fill it in... good idea...
