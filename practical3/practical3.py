@@ -148,6 +148,8 @@ def data_iterator():
     batch_idx = 0
     while True:
         for batch_idx in range(0, len(training_tokens_talks_ted), batch_size):
+            if batch_idx+batch_size+1 > len(training_tokens_talks_ted):
+                continue
             sequence_batch = sequences[batch_idx:batch_idx+batch_size]
             labels_batch = labels[batch_idx:batch_idx+batch_size]
             yield sequence_batch, labels_batch
