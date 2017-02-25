@@ -91,14 +91,13 @@ def length(sequence):
     return length
 
 init_scale = 0.1
-learning_rate = 1.0
+learning_rate = .001
 max_grad_norm = 5
-num_layers = 2
-num_steps = 2000
+num_layers = 3
+num_steps = 1000
 num_outputs = 3
-hidden_size = 200
+hidden_size = 500
 keep_prob = 1.0
-lr_decay = 0.5
 batch_size = 50
 
 x = tf.placeholder("float16",shape=[None, num_steps, vocab_size], name="x_placeholder")
@@ -128,21 +127,22 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 print("graph created")
 
 # format all data
-sequences = np.empty(shape=(0,num_steps,vocab_size), dtype="float16")
+sequences = np.empty(shape=(len(training_tokens_talks_ted),num_steps,vocab_size), dtype="float16")
             
-for talk in training_tokens_talks_ted:
-	sequence = np.empty(shape=(0,vocab_size), dtype="float16")
-
+for talk_idx in range(0, len(training_tokens_talks_ted)):
+    talk = training_tokens_talks_ted[talk_idx]
 	for token_idx in range(0,num_steps):
-		one_hot = np.empty(shape=(1,vocab_size), dtype="float16")
-		if token_idx + 1 < len(talk):
-			one_hot[0,training_idx_ted[talk[token_idx]]] = 1
-		sequence = np.append(sequence, one_hot, axis=0)
+        token = training_tokens_talks_ted[talk_idx][token_idx]
+        sequences[talk_idx][training_idx_ted[token]] = 1
+		
+	print("sequence generated for talk %/%"%(talk_idx, len(training_tokens_talks_ted)))
 
-	sequences = np.vstack((sequences, [sequence]))
-	print("sequence generated for talk")
+np.save("tmp/training_sequences.npy",sequences)
 
 labels = np.reshape(training_labels_talks_ted, (len(training_labels_talks_ted),num_outputs))
+
+np.save("tmp/training_labels.npy", labels)
+
 
 max_epochs = 10
 epoch_iterations = len(sequences) / batch_size
