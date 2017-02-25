@@ -135,7 +135,7 @@ for talk_idx in range(0, len(training_tokens_talks_ted)):
         token = training_tokens_talks_ted[talk_idx][token_idx]
         sequences[talk_idx][training_idx_ted[token]] = 1
 		
-    print("sequence generated for talk %/%"%(talk_idx, len(training_tokens_talks_ted)))
+    print("sequence generated for talk %d/%d"%(talk_idx, len(training_tokens_talks_ted)))
 
 np.save("tmp/training_sequences.npy",sequences)
 
