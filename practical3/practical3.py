@@ -131,18 +131,13 @@ sequences = np.empty(shape=(len(training_tokens_talks_ted),num_steps,vocab_size)
             
 for talk_idx in range(0, len(training_tokens_talks_ted)):
     talk = training_tokens_talks_ted[talk_idx]
-    for token_idx in range(0,num_steps):
+    for token_idx in range(0,min(num_steps,len(talk))):
         token = training_tokens_talks_ted[talk_idx][token_idx]
         sequences[talk_idx][token_idx][training_idx_ted[token]] = 1
 		
     print("sequence generated for talk %d/%d"%(talk_idx, len(training_tokens_talks_ted)))
 
-np.save("tmp/training_sequences.npy",sequences)
-
 labels = np.reshape(training_labels_talks_ted, (len(training_labels_talks_ted),num_outputs))
-
-np.save("tmp/training_labels.npy", labels)
-
 
 max_epochs = 10
 epoch_iterations = len(sequences) / batch_size
