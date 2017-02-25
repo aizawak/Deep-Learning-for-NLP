@@ -15,7 +15,7 @@ import urllib.request
 import zipfile
 import lxml.etree
 
-
+tf.device('/gpu:0')
 # Download the dataset if it's not already there: this may take a minute as it is 75MB
 if not os.path.isfile('ted_en-20160408.zip'):
     urllib.request.urlretrieve("https://wit3.fbk.eu/get.php?path=XML_releases/xml/ted_en-20160408.zip&filename=ted_en-20160408.zip", filename="ted_en-20160408.zip")
@@ -147,9 +147,9 @@ num_iterations = int(max_epochs * epoch_iterations)
 def data_iterator():
     batch_idx = 0
     while True:
-        for batch_idx in range(0, len(training_tokens_talks_ted), batch_size):
-            sequence_batch = sequences[batch_idx:batch_idx+batch_size]
-            labels_batch = labels[batch_idx:batch_idx+batch_size]
+        for batch_idx in range(batch_size, len(training_tokens_talks_ted), batch_size):
+            sequence_batch = sequences[batch_idx:batch_idx-batch_size]
+            labels_batch = labels[batch_idx:batch_idx-batch_size]
             yield sequence_batch, labels_batch
             
 iter_ = data_iterator()
