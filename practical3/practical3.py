@@ -168,3 +168,6 @@ with tf.Session() as sess:
         if (i+1)%epoch_iterations==0:
 			save_path = saver.save(sess, "/tmp/model.ckpt")
 			print("Model saved in file: %s" % save_path)
+
+
+# create the sparse matrix first then fill it in... good idea...
