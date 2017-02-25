@@ -24,6 +24,8 @@ if not os.path.isfile('ted_en-20160408.zip'):
 with zipfile.ZipFile('ted_en-20160408.zip', 'r') as z:
     doc = lxml.etree.parse(z.open('ted_en-20160408.xml', 'r'))
 
+print("data downloaded")
+
 root = doc.getroot()
 
 del doc
@@ -54,7 +56,6 @@ for file in root:
     labels_talks_ted.append(label)
     tokens_talks_ted.append(content_tokens)
 
-
 min_count = 10
 
 training_labels_talks_ted = labels_talks_ted[0:1585]
@@ -80,6 +81,8 @@ for talk in training_tokens_talks_ted:
             next_idx+=1
             
 vocab_size = len(training_idx_ted)
+
+print("data preprocessed")
 
 def length(sequence):
     used = tf.sign(tf.reduce_max(tf.abs(sequence), reduction_indices=2))
@@ -122,6 +125,8 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cross_e
 correct_pred = tf.equal(tf.argmax(y_pred,1), tf.argmax(y,1))
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
+print("graph created")
+
 # format all data
 sequences = np.empty(shape=(0,num_steps,vocab_size), dtype="float16")
             
@@ -135,6 +140,8 @@ for talk in training_tokens_talks_ted:
 		sequence = np.append(sequence, one_hot, axis=0)
 
 	sequences = np.vstack((sequences, [sequence]))
+	print("sequence generated for talk")
+
 labels = np.reshape(training_labels_talks_ted, (len(training_labels_talks_ted),num_outputs))
 
 max_epochs = 10
@@ -156,6 +163,8 @@ saver = tf.train.Saver()
 
 init = tf.global_variables_initializer()
 
+print("training...")
+
 with tf.Session() as sess:
     sess.run(init)
     step = 1
@@ -166,5 +175,5 @@ with tf.Session() as sess:
             print("step %d, training accuracy %g"%(i, train_accuracy))
         optimizer.run(session = sess, feed_dict={x: sequence_batch, y: labels_batch})
         if (i+1)%epoch_iterations==0:
-			save_path = saver.save(sess, "/tmp/model.ckpt")
-			print("Model saved in file: %s" % save_path)
+            save_path = saver.save(sess, "/tmp/model.ckpt")
+            print("Model saved in file: %s"%save_path)
