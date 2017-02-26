@@ -172,7 +172,7 @@ with tf.Session() as sess:
             print("step %d, training accuracy %g"%(i+1, train_accuracy))
         optimizer.run(session = sess, feed_dict={x: sequence_batch, y: labels_batch})
         if (i+1)%epoch_iterations==0:
-            save_path = saver.save(sess, "/tmp/model_%d.ckpt"%(i+1))
+            save_path = saver.save(sess, "tmp/model_%d.ckpt"%(i+1))
             print("Model saved in file: %s"%save_path)
 
 # create the sparse matrix first then fill it in... good idea...
