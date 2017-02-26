@@ -92,6 +92,7 @@ print("unknown tokens removed")
 
 batch_size = 50
 num_outputs = 3
+num_steps = 1000
 
 sequences = np.empty(shape=(len(tokens_talks_ted),num_steps,vocab_size), dtype="float16")
             
@@ -120,7 +121,6 @@ init_scale = 0.1
 learning_rate = .001
 max_grad_norm = 5
 num_layers = 3
-num_steps = 1000
 hidden_size = 500
 keep_prob = 1.0
 
@@ -157,8 +157,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 print("graph created")
 
 max_epochs = 10
-epoch_iterations = int(len(sequences) / batch_size)
-training_iterations = int(max_epochs * epoch_iterations)
+training_epoch_iterations = int(len(training_sequences) / batch_size)
+training_iterations = int(max_epochs * training_epoch_iterations)
 
 # Create iterator
 
@@ -199,16 +199,16 @@ with tf.Session() as sess:
 
         # periodically save model and print validation error
 
-        if (i+1)%epoch_iterations==0:
-                for j in range(epoch_iterations):
-                        validation_sequences_batch, validation_labels_batch = validation_iter_.__next__()
-                        validation_accuracy = accuracy.eval(session=sess, feed_dict={ x: validation_sequences_batch, y: validation_labels_batch})
-                print("epoch %d, validation accuracy %g"%(i+1/epoch_iterations, validation_accuracy))
+        if (i+1)%training_epoch_iterations==0:
+            for j in range(training_epoch_iterations):
+                validation_sequences_batch, validation_labels_batch = validation_iter_.__next__()
+                validation_accuracy = accuracy.eval(session=sess, feed_dict={ x: validation_sequences_batch, y: validation_labels_batch})
+            print("epoch %d, validation accuracy %g"%(i+1/training_epoch_iterations, validation_accuracy))
 
             save_path = saver.save(sess, "tmp/model_%d.ckpt"%(i+1))
             print("Model saved in file: %s"%save_path)
 
-    for i in range(epoch_iterations):
+    for i in range(training_epoch_iterations):
         testing_sequences_batch, testing_labels_batch = testing_iter_.__next__()
         testing_accuracy = accuracy.eval(session=sess, feed_dict={ x: testing_sequences_batch, y: testing_labels_batch})
         print("testing accuracy %g"%(testing_accuracy))
