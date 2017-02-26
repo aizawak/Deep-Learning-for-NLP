@@ -200,15 +200,15 @@ with tf.Session() as sess:
         # periodically save model and print validation error
 
         if (i+1)%epoch_iterations==0:
-        	for j in range(epoch_iterations):
-        		validation_sequences_batch, validation_labels_batch = validation_iter_.__next__()
-        		validation_accuracy = accuracy.eval(session=sess, feed_dict={ x: validation_sequences_batch, y: validation_labels_batch})
-        		print("epoch %d, validation accuracy %g"%(i+1/epoch_iterations, validation_accuracy))
+                for j in range(epoch_iterations):
+                        validation_sequences_batch, validation_labels_batch = validation_iter_.__next__()
+                        validation_accuracy = accuracy.eval(session=sess, feed_dict={ x: validation_sequences_batch, y: validation_labels_batch})
+                print("epoch %d, validation accuracy %g"%(i+1/epoch_iterations, validation_accuracy))
 
             save_path = saver.save(sess, "tmp/model_%d.ckpt"%(i+1))
             print("Model saved in file: %s"%save_path)
 
     for i in range(epoch_iterations):
-    	testing_sequences_batch, testing_labels_batch = testing_iter_.__next__()
-    	testing_accuracy = accuracy.eval(session=sess, feed_dict={ x: testing_sequences_batch, y: testing_labels_batch})
-    	print("testing accuracy %g"%(testing_accuracy))
+        testing_sequences_batch, testing_labels_batch = testing_iter_.__next__()
+        testing_accuracy = accuracy.eval(session=sess, feed_dict={ x: testing_sequences_batch, y: testing_labels_batch})
+        print("testing accuracy %g"%(testing_accuracy))
