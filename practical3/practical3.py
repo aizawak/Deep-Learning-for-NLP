@@ -15,7 +15,6 @@ import urllib.request
 import zipfile
 import lxml.etree
 
-tf.device('/gpu:0')
 # Download the dataset if it's not already there: this may take a minute as it is 75MB
 if not os.path.isfile('ted_en-20160408.zip'):
     urllib.request.urlretrieve("https://wit3.fbk.eu/get.php?path=XML_releases/xml/ted_en-20160408.zip&filename=ted_en-20160408.zip", filename="ted_en-20160408.zip")
@@ -56,49 +55,80 @@ for file in root:
     labels_talks_ted.append(label)
     tokens_talks_ted.append(content_tokens)
 
-min_count = 10
+print("content tokenized and cleaned")
 
-training_labels_talks_ted = labels_talks_ted[0:1585]
-training_tokens_talks_ted = tokens_talks_ted[0:1585]
+# Count each token in training talks
 
 training_counts_ted = collections.Counter()
-training_tokens_ted = [token for talk in training_tokens_talks_ted for token in talk]
+training_tokens_ted = [token for talk in tokens_talks_ted[0:1585] for token in talk]
 
 for token in training_tokens_ted:
     training_counts_ted[token] += 1
 
-training_idx_ted = {}
+print("tokens counted")
 
+# Determine onehot encoding idx for each token
+# Remove all unknown tokens
+
+onehot_idx_ted = {}
+
+min_count = 10
 next_idx = 0
-for talk in training_tokens_talks_ted:
+for talk in tokens_talks_ted:
     for idx in range(0, len(talk)):
-        if training_counts_ted[talk[idx]] < min_count:
+        if talk[idx] not in training_counts_ted or training_counts_ted[talk[idx]] < min_count:
             talk[idx]="UNKNOWNTEXT"
-        if talk[idx] in training_idx_ted:
+        if talk[idx] in onehot_idx_ted:
             continue
         else:
-            training_idx_ted[talk[idx]] = next_idx
+            onehot_idx_ted[talk[idx]] = next_idx
             next_idx+=1
             
-vocab_size = len(training_idx_ted)
+vocab_size = len(onehot_idx_ted)
 
-print("data preprocessed")
+print("unknown tokens removed")
 
-def length(sequence):
-    used = tf.sign(tf.reduce_max(tf.abs(sequence), reduction_indices=2))
-    length = tf.reduce_sum(used, reduction_indices=1)
-    length = tf.cast(length, tf.int32)
-    return length
+# Create One-Hot Encodings for all tokens
+
+batch_size = 50
+num_outputs = 3
+
+sequences = np.empty(shape=(len(tokens_talks_ted),num_steps,vocab_size), dtype="float16")
+            
+for talk_idx in range(0, len(tokens_talks_ted)):
+    talk = tokens_talks_ted[talk_idx]
+    for token_idx in range(0,min(num_steps,len(talk))):
+        token = tokens_talks_ted[talk_idx][token_idx]
+        sequences[talk_idx][token_idx][onehot_idx_ted[token]] = 1
+		
+labels = np.reshape(labels_talks_ted, (len(labels_talks_ted),num_outputs))
+
+print ("one hot encodings created")
+
+training_sequences = sequences[0:1585]
+training_labels = labels[0:1585]
+
+validation_sequences = sequences[1585:1835]
+validation_labels = labels[1585:1835]
+
+testing_sequences = sequences[1835:2085]
+testing_labels = labels[1835:2085]
+
+# Build LSTM graph
 
 init_scale = 0.1
 learning_rate = .001
 max_grad_norm = 5
 num_layers = 3
 num_steps = 1000
-num_outputs = 3
 hidden_size = 500
 keep_prob = 1.0
-batch_size = 50
+
+def length(sequence):
+    used = tf.sign(tf.reduce_max(tf.abs(sequence), reduction_indices=2))
+    length = tf.reduce_sum(used, reduction_indices=1)
+    length = tf.cast(length, tf.int32)
+    return length
 
 x = tf.placeholder("float16",shape=[None, num_steps, vocab_size], name="x_placeholder")
 y = tf.placeholder("float16",shape=[None, num_outputs], name="y_placeholder")
@@ -126,35 +156,27 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 print("graph created")
 
-# format all data
-sequences = np.empty(shape=(len(training_tokens_talks_ted),num_steps,vocab_size), dtype="float16")
-            
-for talk_idx in range(0, len(training_tokens_talks_ted)):
-    talk = training_tokens_talks_ted[talk_idx]
-    for token_idx in range(0,min(num_steps,len(talk))):
-        token = training_tokens_talks_ted[talk_idx][token_idx]
-        sequences[talk_idx][token_idx][training_idx_ted[token]] = 1
-		
-    print("sequence generated for talk %d/%d"%(talk_idx, len(training_tokens_talks_ted)))
-
-labels = np.reshape(training_labels_talks_ted, (len(training_labels_talks_ted),num_outputs))
-
 max_epochs = 10
 epoch_iterations = int(len(sequences) / batch_size)
-num_iterations = int(max_epochs * epoch_iterations)
+training_iterations = int(max_epochs * epoch_iterations)
 
+# Create iterator
 
-def data_iterator():
+def data_iterator(sequences, labels, batch_size):
     batch_idx = 0
     while True:
-        for batch_idx in range(0, len(training_tokens_talks_ted), batch_size):
-            if batch_idx+batch_size+1 > len(training_tokens_talks_ted):
+        for batch_idx in range(0, len(sequences), batch_size):
+            if batch_idx+batch_size+1 > len(sequences):
                 continue
-            sequence_batch = sequences[batch_idx:batch_idx+batch_size]
+            sequences_batch = sequences[batch_idx:batch_idx+batch_size]
             labels_batch = labels[batch_idx:batch_idx+batch_size]
-            yield sequence_batch, labels_batch
+            yield sequences_batch, labels_batch
             
-iter_ = data_iterator()
+training_iter_ = data_iterator(training_sequences, training_labels, batch_size)
+
+validation_iter_ = data_iterator(validation_sequences, validation_labels, batch_size)
+
+testing_iter_ = data_iterator(testing_sequences, testing_labels, batch_size)
 
 saver = tf.train.Saver()
 
@@ -165,14 +187,28 @@ print("training...")
 with tf.Session() as sess:
     sess.run(init)
     step = 1
-    for i in range(num_iterations):
-        sequence_batch, labels_batch = iter_.__next__()
+    for i in range(training_iterations):
+        training_sequences_batch, training_labels_batch = training_iter_.__next__()
+        # periodically print training error
+
         if (i+1)%10==0:
-            train_accuracy = accuracy.eval(session = sess, feed_dict={ x:sequence_batch, y: labels_batch})
+            train_accuracy = accuracy.eval(session = sess, feed_dict={ x:training_sequences_batch, y: training_labels_batch})
             print("step %d, training accuracy %g"%(i+1, train_accuracy))
-        optimizer.run(session = sess, feed_dict={x: sequence_batch, y: labels_batch})
+
+        optimizer.run(session = sess, feed_dict={x: training_sequences_batch, y: training_labels_batch})
+
+        # periodically save model and print validation error
+
         if (i+1)%epoch_iterations==0:
+        	for j in range(epoch_iterations):
+        		validation_sequences_batch, validation_labels_batch = validation_iter_.__next__()
+        		validation_accuracy = accuracy.eval(session=sess, feed_dict={ x: validation_sequences_batch, y: validation_labels_batch})
+        		print("epoch %d, validation accuracy %g"%(i+1/epoch_iterations, validation_accuracy))
+
             save_path = saver.save(sess, "tmp/model_%d.ckpt"%(i+1))
             print("Model saved in file: %s"%save_path)
 
-# create the sparse matrix first then fill it in... good idea...
+    for i in range(epoch_iterations):
+    	testing_sequences_batch, testing_labels_batch = testing_iter_.__next__()
+    	testing_accuracy = accuracy.eval(session=sess, feed_dict={ x: testing_sequences_batch, y: testing_labels_batch})
+    	print("testing accuracy %g"%(testing_accuracy))
